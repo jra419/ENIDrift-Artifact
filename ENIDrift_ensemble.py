@@ -109,10 +109,10 @@ class dual_ensemble():
         prob_n = self.dual_normal.sub_predict(x)
         # attack
         if prob_n <= 0:
-            return 1
+            return [prob_n, 1]
         # normal
         else:
-            return 0
+            return [prob_n, 0]
     
     def generate(self, target, x):
 
