@@ -1,6 +1,7 @@
 import time
 import sys
 import itertools
+import csv
 from datetime import datetime
 from iP2Vmain import *
 from numpy import *
@@ -21,12 +22,6 @@ settings = {
         'sampling': sys.argv[2],
         'attack': sys.argv[1]
 }
-
-# path_packet = 'data//packets.csv'
-# path_label = 'data//labels.npy'
-
-# path_packet = '/mnt/data/datasets/kitsune/os-scan/b/os-scan.csv'
-# path_label = '/mnt/data/datasets/kitsune/os-scan/b/os-scan-labels.npy'
 
 path_packet = str(sys.argv[4])
 path_label = str(sys.argv[5])
@@ -51,6 +46,10 @@ s = settings['save']
 label = load(path_label)
 packets = read_csv(path_packet)
 
+with open(path_packet, 'r') as p:
+    reader = csv.reader(p)
+    headers = list(reader)
+
 sampling = int(settings['sampling'])
 attack = settings['attack']
 
@@ -59,6 +58,8 @@ if vec:
 
 print("\n\n**********ENIDrift**********\n\n")
 
+enidrift_eval = []
+
 for i_run in range(num_run):
     ENIDrift = ENIDrift_train(lamda = lamd, delta=delt, incremental=incre)
     FE = increPacket2Vector_main(path = path_packet, incremental=incre, sampl=sampling)
@@ -66,6 +67,7 @@ for i_run in range(num_run):
     ENIDrift.loadpara()
     FE.loadpara()
     prediction = []
+    flow_headers = []
     num_released = 0
 
     start = time.time()
@@ -81,40 +83,18 @@ for i_run in range(num_run):
 
         if (i_packet+1) % sampling != 0:
             continue
-        # else:
-        #     print(i_packet)
-
-        # if i_packet%1000 == 0:
-        #     print('[info] '+str(i_packet)+' processed...')
-
-        # if i_packet == 1314687:
-        #     print("last", label[i_packet-1])
-        #     print("current", label[i_packet])
 
         cur_labels.append(label[i_packet])
         cur_pkt += 1
 
-        # print("label row 1", label[0])
-        # print("label row 64", label[63])
-        # print("i_packet", str(i_packet))
-        # print("label", label[i_packet])
-        # if label[i_packet] == 1:
-        #     print("!!! " + str(i_packet))
-        #     break
-
-
         packet_extracted = FE.iP2Vrun().reshape(1, -1)
         prediction.append(ENIDrift.predict(packet_extracted))
+        flow_headers.append([headers[i_packet+1][0], headers[i_packet+1][1],
+                             headers[i_packet+1][2], headers[i_packet+1][3]])
 
         # Release labels
-        # if i_packet % release_speed == 0:
         if cur_pkt % release_speed == 0:
-            # print("i_packet", i_packet)
-            # print(cur_labels)
-            # print(np.asarray(cur_labels).shape)
             ENIDrift.update(np.asarray(cur_labels))
-            # ENIDrift.update(label[num_released:i_packet+1])
-            # num_released = i_packet + 1
             cur_pkt = 0
             labels_sampl.append(cur_labels)
             cur_labels = []
@@ -125,12 +105,16 @@ for i_run in range(num_run):
 
     # Cut the inital round (where no classifier is actually trained).
     prediction = prediction[release_speed:]
-    # labels_sampl = labels_sampl[release_speed:]
+    flow_headers = flow_headers[release_speed:]
+    labels_sampl = np.asarray(list(itertools.chain(*labels_sampl)))[release_speed:]
 
-    # if s:
-    #     ENIDrift.save()
-    #     if not vec:
-    #         FE.save()
+    for i in range(len(labels_sampl)):
+        print(labels_sampl[i])
+
+    for i in range(len(labels_sampl)):
+        enidrift_eval.append([flow_headers[i][0], flow_headers[i][1], flow_headers[i][2],
+                              flow_headers[i][3], prediction[i][0], prediction[i][2],
+                              prediction[i][1], int(labels_sampl[i])])
+
     print("[info] Time elapsed for round "+str(i_run)+": "+str(stop-start)+" seconds")
-    save(str(attack) + "-sampl-" + str(sampling) + "-r-" + str(release_speed) + "-" + str(ts_datetime) + "-result_prediction.npy", prediction)
-    overall(prediction, np.asarray(list(itertools.chain(*labels_sampl)))[release_speed:], attack, sampling, release_speed)
+    overall(prediction, labels_sampl, enidrift_eval, attack, sampling, release_speed)

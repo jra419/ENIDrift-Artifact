@@ -3,9 +3,9 @@ from sklearn.decomposition import PCA
 import joblib
 
 class ensemble():
-    
+
     def __init__(self, learner='PCA', threshold=0.80, alpha=0.05, ID = 'normal', limit=30):
-        
+
         self.learner = 'PCA'
         self.threshold = threshold
         self.alpha = alpha
@@ -16,23 +16,33 @@ class ensemble():
         self.ID = ID
         self.threshold_update = 0.80
         self.threshold_adjust = 0.05
-        
+
     def sub_predict(self, x):
-                
         pred_raw = 0
-        
+        weight = 0
+        score_total = 0
+        # for w in self.weight_list:
+        #     print(f'Weight: {w}')
+        #     weight += w
+        # print(f'Total weight: {weight}')
         for i in range(len(self.detector_pool)):
-            if self.threshold_list[i] <= self.detector_pool[i].score(x.reshape(1, -1)):
+            score_reshaped = self.detector_pool[i].score(x.reshape(1, -1))
+            # print(f'score reshaped: {score_reshaped}')
+            score_total += score_reshaped*self.weight_list[i]
+            if self.threshold_list[i] <= score_reshaped:
                 pred_raw = pred_raw + self.weight_list[i]
             else:
                 pred_raw = pred_raw - self.weight_list[i]
-        
-        return pred_raw
+        if len(self.detector_pool) > 0:
+            score_total = abs(score_total / len(self.detector_pool))
+            # score_total = score_total / len(self.detector_pool))
+            # print(f'score_total: {score_total}')
+        return [pred_raw, score_total]
 
     def adjust(self, x, update=True):
-        
+
         if update == True:
-            
+
             num_sample = x.shape[0]
             for i in range(len(self.detector_pool)):
                 scores = self.detector_pool[i].score_samples(x)
@@ -42,21 +52,21 @@ class ensemble():
                     self.weight_list[i] = 1
                 else:
                     self.weight_list[i] = self.weight_list[i] * decay
-            
+
             model = PCA(n_components=0.99)
             model.fit(x)
             scores = model.score_samples(x)
-            
+
             self.threshold_list.append(sorted(scores)[0])
             self.detector_pool.append(model)
             self.weight_list.append(1)
-            
+
             while self.limit <= len(self.detector_pool):
                 idx_delete = self.weight_list.index(min(self.weight_list))
                 del self.weight_list[idx_delete]
                 del self.detector_pool[idx_delete]
                 del self.threshold_list[idx_delete]
-                
+
         else:
             num_sample = x.shape[0]
             for i in range(len(self.detector_pool)):
@@ -67,7 +77,7 @@ class ensemble():
                     self.weight_list[i] = 1
                 else:
                     self.weight_list[i] = self.weight_list[i] * decay
-                
+
     def save_pcas(self, name):
 
         for i in range(len(self.detector_pool)):
@@ -76,13 +86,13 @@ class ensemble():
         save('model//threshold.npy', self.threshold_list)
         temp = [len(self.detector_pool)]
         save('model//num.npy', temp)
-    
+
     def get_num(self):
 
         return len(self.detector_pool)
-    
+
     def load_pca(self):
-        
+
         try:
             temp = load('model//num.npy')
             num = temp[0]
@@ -98,34 +108,34 @@ class ensemble():
             print("[info] ENIDrift will train new model...")
 
 class dual_ensemble():
-    
+
     def __init__(self, learner='PCA', max_sublearner=30):
-        
+
         self.learner = learner
         self.dual_normal = ensemble(limit = max_sublearner)
-    
-    def predict(self, x):
 
+    def predict(self, x):
         prob_n = self.dual_normal.sub_predict(x)
+
         # attack
-        if prob_n <= 0:
-            return [prob_n, 1]
+        if prob_n[0] <= 0:
+            return [prob_n[0], 1, prob_n[1]]
         # normal
         else:
-            return [prob_n, 0]
-    
+            return [prob_n[0], 0, prob_n[1]]
+
     def generate(self, target, x):
 
         self.dual_normal.adjust(x, update=True)
-            
+
     def save_classifier(self):
-        
+
         self.dual_normal.save_pcas('normal')
-    
+
     def ensembleupdate(self, x):
-        
+
         self.dual_normal.adjust(x, update=False)
-    
+
     def load_classifier(self):
-        
+
         self.dual_normal.load_pca()

@@ -4,6 +4,10 @@ from datetime import datetime
 #matplotlib.use('Agg')
 #import matplotlib.pyplot as plt
 from sklearn import metrics
+import os
+from pathlib import Path
+from datetime import datetime
+import pandas as pd
 import numpy as np
 
 def evaluate(x, y, window=10000,):
@@ -123,24 +127,37 @@ def Err2():
 
     return 1
 
-def overall(x, y, attack, sampl, release_speed):
+def overall(x, y, enidrift_eval, attack, sampl, release_speed):
 
     try:
         num = x.shape[0]
     except:
         num = len(x)
 
+    ts_datetime = datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')[:-3]
 
-    print(len(x))
-    print(y.shape[0])
-    temp1 = sum([1 for i in range(num) if x[i][1]==y[i]==1])
-    print("True Positive"+str(temp1))
-    temp2 = sum([1 for i in range(num) if x[i][1]==1 and y[i]==0])
-    print("False Positive"+str(temp2))
-    temp3 = sum([1 for i in range(num) if x[i][1]==y[i]==0])
-    print("True Negative"+str(temp3))
-    temp4 = sum([1 for i in range(num) if x[i][1]==0 and y[i]==1])
-    print("False Negative"+str(temp4))
+    outdir = f'{Path(__file__).parents[0]}/eval'
+    if not os.path.exists(f'{Path(__file__).parents[0]}/eval'):
+        os.makedirs(outdir, exist_ok=True)
+    outpath_enidrift = os.path.join(
+        outdir, f'{attack}-sampl-{sampl}-r-{release_speed}-{ts_datetime}.csv')
+
+    # Collect the processed packets' score, prediction, label, and save to a csv.
+    df_enidrift = pd.DataFrame(enidrift_eval, columns=[
+        'ip_src', 'ip_dst', 'port_src', 'port_dst',
+        'score', 'weighted_output', 'prediction', 'label'])
+    df_enidrift.to_csv(outpath_enidrift, chunksize=10000, index=None)
+
+    # print(len(x))
+    # print(y.shape[0])
+    temp1 = int(sum([1 for i in range(num) if x[i][1]==y[i]==1]))
+    print("True Positive "+str(temp1))
+    temp2 = int(sum([1 for i in range(num) if x[i][1]==1 and y[i]==0]))
+    print("False Positive "+str(temp2))
+    temp3 = int(sum([1 for i in range(num) if x[i][1]==y[i]==0]))
+    print("True Negative "+str(temp3))
+    temp4 = int(sum([1 for i in range(num) if x[i][1]==0 and y[i]==1]))
+    print("False Negative "+str(temp4))
     try:
         TPR = temp1 / (temp1 + temp4)
     except ZeroDivisionError:
@@ -183,9 +200,9 @@ def overall(x, y, attack, sampl, release_speed):
     for a in (i[1] for i in x):
         score.append(a)
 
-    print(y)
-    print(y.shape[0])
-    print(type(y))
+    # print(y)
+    # print(y.shape[0])
+    # print(type(y))
     roc_curve_fpr, roc_curve_tpr, roc_curve_thres = metrics.roc_curve(y, score)
     roc_curve_fnr = 1 - roc_curve_tpr
 
@@ -203,9 +220,9 @@ def overall(x, y, attack, sampl, release_speed):
     #print("G-mean: "+str(temp9))
 
     # save("result_overall_result.npy", [temp1, temp2, temp3, temp4, temp5, temp6, temp7, temp8, temp_9, temp9])
-        # Write the eval to a txt.
+    # Write the eval to a txt.
     ts_datetime = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-    f = open(f'{attack}-sampl-{sampl}-r-{release_speed}-{ts_datetime}-metrics.txt', 'a+')
+    f = open(f'eval/{attack}-sampl-{sampl}-r-{release_speed}-{ts_datetime}-metrics.txt', 'a+')
     f.write(f'TP: {temp1}\n')
     f.write(f'TN: {temp3}\n')
     f.write(f'FP: {temp2}\n')
