@@ -2,6 +2,7 @@ import time
 import sys
 import itertools
 import csv
+import argparse
 from datetime import datetime
 from iP2Vmain import *
 from numpy import *
@@ -9,22 +10,29 @@ from pandas import *
 from measure import *
 from ENIDrift_main import *
 
+parser = argparse.ArgumentParser(description="ENIDrift args.")
+parser.add_argument("--attack", type=str)
+parser.add_argument("--sampling", type=int)
+parser.add_argument("--release_speed", type=int)
+parser.add_argument("--pcap", type=str)
+parser.add_argument("--attack_flows", type=str)
+args = parser.parse_args()
 
 settings = {
         'num_run': 1,
-        'release_speed': sys.argv[3],
+        'release_speed': args.release_speed,
         'lamda': [0.1, 0.1],
         'delta': [0.05, 0.05],
         'incremental': True,
         'save': True,
         'vector': False,
         'my_limit': 200000,
-        'sampling': sys.argv[2],
-        'attack': sys.argv[1]
+        'sampling': args.sampling,
+        'attack': args.attack
 }
 
-path_packet = str(sys.argv[4])
-path_attack_flows = str(sys.argv[5])
+path_packet = args.pcap
+path_attack_flows = args.attack_flows
 
 vec = settings['vector']
 my_limit = settings['my_limit']
