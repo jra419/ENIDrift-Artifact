@@ -10,7 +10,8 @@ import VectorDict
 class increPacket2Vector:
     def __init__(
             self, path, lr, n_epoch, limit=50000000, dim=100, mode='unigram-table', a=0.75,
-            n_negative=5, sgd='adagrad', kind='input', max_size_np=1e8, sampl=1):
+            n_negative=5, sgd='adagrad', kind='input', max_size_np=1e8, sampl=1,
+            attack_flows_path=''):
 
         # initiate parameters
         # self.n_processed = 0 # the number of packets that have been processed
@@ -26,6 +27,14 @@ class increPacket2Vector:
         self.load_data(path)
         self.sampl=sampl
 
+        self.attack_flows = self.load_attack_flows(attack_flows_path)
+
+    def load_attack_flows(self, path):
+        with open(path) as fp:
+            data = [list(map(str, line.strip().split(' '))) for line in fp]
+        print(data)
+        return data
+
     def load_data(self, p):
 
         self.packets = pd.read_csv(p, dtype=str)
@@ -35,6 +44,9 @@ class increPacket2Vector:
 
         srcIP = self.packets['srcIP'][p_idx]
         dstIP = self.packets['dstIP'][p_idx]
+        # print(p_idx)
+        # print(srcIP)
+        # print(dstIP)
         if srcIP < dstIP:
             flow_name = srcIP+dstIP
         else:
@@ -64,6 +76,19 @@ class increPacket2Vector:
         ext_packet = self.preproc_packet(self.n_processed)
         self.vec_dict.update(ext_packet)
 
+        # Check if current packet is labeled as an attack
+        cur_label = 0
+        for flow in self.attack_flows:
+            # print("ext_packet src ip: ", ext_packet[1])
+            # print("ext_packet dst ip: ", ext_packet[2])
+            if ext_packet[1] == flow[0] and ext_packet[2] == flow[1]:
+                # print("ATTACK FOUND")
+                # print("ext_packet src ip: ", ext_packet[1])
+                # print("ext_packet dst ip: ", ext_packet[2])
+                # print("flow src ip: ", flow[0])
+                # print("flow dst ip: ", flow[1])
+                cur_label = 1
+
         # train
         for target in ext_packet:
             for context in ext_packet:
@@ -81,7 +106,7 @@ class increPacket2Vector:
         self.ne_pool.update(ext_packet)
         self.n_processed += self.sampl
 
-        return self.vec_dict.get(ext_packet[0])
+        return [self.vec_dict.get(ext_packet[0]), cur_label]
 
     def next_packet(self):
 

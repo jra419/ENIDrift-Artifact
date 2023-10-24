@@ -24,7 +24,7 @@ settings = {
 }
 
 path_packet = str(sys.argv[4])
-path_label = str(sys.argv[5])
+path_attack_flows = str(sys.argv[5])
 
 vec = settings['vector']
 my_limit = settings['my_limit']
@@ -43,7 +43,6 @@ lamd = settings['lamda']
 delt = settings['delta']
 incre = settings['incremental']
 s = settings['save']
-label = load(path_label)
 packets = read_csv(path_packet)
 
 with open(path_packet, 'r') as p:
@@ -62,7 +61,8 @@ enidrift_eval = []
 
 for i_run in range(num_run):
     ENIDrift = ENIDrift_train(lamda = lamd, delta=delt, incremental=incre)
-    FE = increPacket2Vector_main(path = path_packet, incremental=incre, sampl=sampling)
+    FE = increPacket2Vector_main(path = path_packet, incremental=incre, sampl=sampling,
+                                 attack_flows=path_attack_flows)
 
     ENIDrift.loadpara()
     FE.loadpara()
@@ -76,7 +76,7 @@ for i_run in range(num_run):
     cur_pkt = 0
     labels_sampl = []
 
-    for i_packet in range(len(label)):
+    for i_packet in range(len(packets)):
 
         if i_packet%10000 == 0:
             print('[info] '+str(i_packet)+' processed...')
@@ -84,13 +84,15 @@ for i_run in range(num_run):
         if (i_packet+1) % sampling != 0:
             continue
 
-        cur_labels.append(label[i_packet])
-        cur_pkt += 1
-
-        packet_extracted = FE.iP2Vrun().reshape(1, -1)
+        packet_extracted_tmp = FE.iP2Vrun()
+        packet_extracted = packet_extracted_tmp[0].reshape(1, -1)
         prediction.append(ENIDrift.predict(packet_extracted))
         flow_headers.append([headers[i_packet+1][0], headers[i_packet+1][1],
                              headers[i_packet+1][2], headers[i_packet+1][3]])
+
+        cur_label = packet_extracted_tmp[1]
+        cur_labels.append(cur_label)
+        cur_pkt += 1
 
         # Release labels
         if cur_pkt % release_speed == 0:
