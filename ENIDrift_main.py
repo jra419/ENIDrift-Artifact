@@ -1,3 +1,4 @@
+import time
 from numpy import *
 from ENIDrift_ensemble import *
 from GenerationIndex import *
@@ -22,6 +23,8 @@ class ENIDrift_train():
 
     def predict(self, x):
 
+        start = time.time()
+
         if not self.incremental:
             return self.detector.predict(x)
 
@@ -31,10 +34,15 @@ class ENIDrift_train():
             self.generate_temp = x
             self.num_generate_temp = 1
 
-        return self.detector.predict(x)
+        stop = time.time()
+        elapsed = stop - start
+
+        return self.detector.predict(x), elapsed
 
 
     def update(self, y):
+
+        start = time.time()
 
         if not self.incremental:
             return 0
@@ -75,6 +83,11 @@ class ENIDrift_train():
 
         self.generate_temp = array([])
         self.num_generate_temp = 0
+
+        stop = time.time()
+        elapsed = stop - start
+
+        return elapsed
 
     def save(self):
 

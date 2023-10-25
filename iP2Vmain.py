@@ -1,6 +1,7 @@
 import pandas as pd
 import increPacket2Vector
 import numpy as np
+import time
 
 class increPacket2Vector_main():
 
@@ -22,10 +23,12 @@ class increPacket2Vector_main():
 
     def iP2Vrun(self):
 
+        start = time.time()
         # self.i = self.i + 1
         self.i = self.i + self.sampl
         vector = self.ip2v.next_packet()
-        return [np.array(vector[0]), vector[1]]
+        end = time.time()
+        return [np.array(vector[0]), vector[1], end - start, vector[2]]
 
     def loadpara(self):
 

@@ -106,7 +106,7 @@ class increPacket2Vector:
         self.ne_pool.update(ext_packet)
         self.n_processed += self.sampl
 
-        return [self.vec_dict.get(ext_packet[0]), cur_label]
+        return [self.vec_dict.get(ext_packet[0]), cur_label, ext_packet[8]]
 
     def next_packet(self):
 
