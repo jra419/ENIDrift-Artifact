@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 import NegativePool
 import VectorDict
@@ -39,26 +38,12 @@ class increPacket2Vector:
             flow_name = srcIP+dstIP
         else:
             flow_name = dstIP+srcIP
-        # if p_idx == 1314687:
-        #     srcproto = self.packets['srcproto'][p_idx]
-        #     dstproto = self.packets['dstproto'][p_idx]
-        #     srcMAC = self.packets['srcMAC'][p_idx]
-        #     dstMAC = self.packets['dstMAC'][p_idx]
-        #     protocol = self.packets['protocol'][p_idx]
-        #     lEN = self.packets['len'][p_idx]
-        #     ts = self.packets['timestamp'][p_idx]
-        #     print(str(p_idx))
-        #     print(f'{srcIP}, {dstIP}, {srcproto}, {dstproto}, {srcMAC}, {dstMAC}, {protocol},\
-        #         {lEN}, {ts}')
-        #     print()
 
         return [flow_name] + [srcIP, dstIP, self.packets['srcproto'][p_idx], self.packets['dstproto'][p_idx],
                 self.packets['srcMAC'][p_idx], self.packets['dstMAC'][p_idx], self.packets['protocol'][p_idx],
                 self.packets['len'][p_idx]]
 
     def proc_packet(self):
-
-        # print("n_processed", self.n_processed)
 
         # preprocess and update vocabulary
         ext_packet = self.preproc_packet(self.n_processed)

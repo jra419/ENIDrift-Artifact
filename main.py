@@ -68,6 +68,7 @@ for i_run in range(num_run):
     FE.loadpara()
     prediction = []
     flow_headers = []
+
     num_released = 0
 
     start = time.time()
@@ -76,10 +77,19 @@ for i_run in range(num_run):
     cur_pkt = 0
     labels_sampl = []
 
+    last_release_time = headers[1][8]
+    cur_time = 0
+
+    time_start = 0
+    time_end = 0
+
     for i_packet in range(len(label)):
 
         if i_packet%10000 == 0:
+            time_end = time.time()
+            print(f'Elapsed time: {time_end - time_start}')
             print('[info] '+str(i_packet)+' processed...')
+            time_start = time_end
 
         if (i_packet+1) % sampling != 0:
             continue
@@ -92,12 +102,15 @@ for i_run in range(num_run):
         flow_headers.append([headers[i_packet+1][0], headers[i_packet+1][1],
                              headers[i_packet+1][2], headers[i_packet+1][3]])
 
+        cur_time = headers[i_packet+1][8]
+
         # Release labels
-        if cur_pkt % release_speed == 0:
+        if float(cur_time) - float(last_release_time) > release_speed:
             ENIDrift.update(np.asarray(cur_labels))
             cur_pkt = 0
             labels_sampl.append(cur_labels)
             cur_labels = []
+            last_release_time = cur_time
 
     labels_sampl.append(cur_labels)
     stop = time.time()
